@@ -61,8 +61,25 @@ class CalculateTripView(APIView):
         pickup_coords, pickup_name = geocode(pickup_loc)
         dropoff_coords, dropoff_name = geocode(dropoff_loc)
 
-        if not (start_coords and pickup_coords and dropoff_coords):
-            return Response({"error": "Could not geocode one or more locations. Please check inputs."}, status=400)
+        field_errors = {}
+        if not start_coords:
+            field_errors['start_location'] = (
+                f'We could not find "{start_loc}". Check the spelling, or add more detail like city and state.'
+            )
+        if not pickup_coords:
+            field_errors['pickup_location'] = (
+                f'We could not find "{pickup_loc}". Check the spelling, or add more detail like city and state.'
+            )
+        if not dropoff_coords:
+            field_errors['dropoff_location'] = (
+                f'We could not find "{dropoff_loc}". Check the spelling, or add more detail like city and state.'
+            )
+
+        if field_errors:
+            return Response({
+                "error": " ".join(field_errors.values()),
+                "field_errors": field_errors,
+            }, status=400)
 
         route1 = get_osrm_route(start_coords, pickup_coords)
         route2 = get_osrm_route(pickup_coords, dropoff_coords)

@@ -113,6 +113,7 @@ function App() {
     const [data, setData] = useState(null);
     const [formData, setFormData] = useState({});
     const [error, setError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState(null);
     const [view, setView] = useState('landing');
     const [scrolled, setScrolled] = useState(false);
 
@@ -136,6 +137,7 @@ function App() {
     const handleSubmit = async (searchData) => {
         setLoading(true);
         setError(null);
+        setFieldErrors(null);
         setData(null);
         setFormData(searchData);
         setView('results');
@@ -150,6 +152,7 @@ function App() {
             console.error(err);
             const apiMessage = err.response?.data?.error || err.message;
             setError(apiMessage || 'Error calculating trip. Please check your inputs and try again.');
+            setFieldErrors(err.response?.data?.field_errors || null);
             setView('form');
         } finally {
             setLoading(false);
@@ -382,7 +385,7 @@ function App() {
                             className="flex justify-center"
                         >
                             <div className="w-full max-w-2xl">
-                                <Form onSubmit={handleSubmit} loading={loading} initialValues={formData} />
+                                <Form onSubmit={handleSubmit} loading={loading} initialValues={formData} fieldErrors={fieldErrors} />
                                 <div className="mt-6 text-center">
                                     <button
                                         onClick={() => setView('landing')}

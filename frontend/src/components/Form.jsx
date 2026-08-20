@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+    AlertCircle,
     ArrowRight,
     Building2,
     CircleDot,
@@ -19,14 +20,23 @@ const section = {
     animate: { opacity: 1, y: 0 },
 };
 
-function Field({ icon: Icon, label, children }) {
+function Field({ icon: Icon, label, children, error }) {
     return (
         <label className="group block">
             <span className="label mb-2 group-focus-within:text-brand-light">{label}</span>
             <span className="relative block">
-                <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint transition-colors duration-300 group-focus-within:text-brand-light" />
+                <Icon
+                    className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors duration-300 ${error ? 'text-flare-light' : 'text-faint group-focus-within:text-brand-light'
+                        }`}
+                />
                 {children}
             </span>
+            {error && (
+                <span className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-flare-light">
+                    <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                    {error}
+                </span>
+            )}
         </label>
     );
 }
@@ -53,8 +63,15 @@ const EXAMPLE_TRIP = {
     current_cycle_used: 12.5,
 };
 
-export default function Form({ onSubmit, loading, initialValues }) {
+export default function Form({ onSubmit, loading, initialValues, fieldErrors }) {
     const [data, setData] = useState({ ...EMPTY_TRIP, ...initialValues });
+    const [prevFieldErrors, setPrevFieldErrors] = useState(fieldErrors);
+    const [liveErrors, setLiveErrors] = useState(fieldErrors || {});
+
+    if (fieldErrors !== prevFieldErrors) {
+        setPrevFieldErrors(fieldErrors);
+        setLiveErrors(fieldErrors || {});
+    }
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -62,6 +79,13 @@ export default function Form({ onSubmit, loading, initialValues }) {
             ? String(Math.min(CYCLE_LIMIT, Math.max(0, Number(value) || 0)))
             : value;
         setData((prev) => ({ ...prev, [name]: next }));
+        if (liveErrors[name]) {
+            setLiveErrors((prev) => {
+                const copy = { ...prev };
+                delete copy[name];
+                return copy;
+            });
+        }
     };
 
     const handleSubmit = (e) => {
@@ -190,32 +214,36 @@ export default function Form({ onSubmit, loading, initialValues }) {
                     <legend className="eyebrow mb-5">Route</legend>
 
                     <div className="space-y-4">
-                        {stops.map((stop) => (
-                            <div key={stop.name} className="relative flex items-end gap-4">
-                                {stop.rail && (
-                                    <span
-                                        aria-hidden
-                                        className={`pointer-events-none absolute left-[7px] top-[calc(100%_-_21.5px)] h-[calc(100%_+_1rem)] w-px bg-gradient-to-b ${stop.rail}`}
-                                    />
-                                )}
-                                <span className="relative mb-3.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center">
-                                    <span className={`h-[7px] w-[7px] rounded-full ${stop.dot}`} />
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <Field icon={stop.icon} label={stop.label}>
-                                        <input
-                                            type="text"
-                                            name={stop.name}
-                                            className="field pl-10"
-                                            placeholder={stop.placeholder}
-                                            value={data[stop.name]}
-                                            onChange={handleChange}
-                                            required
+                        {stops.map((stop) => {
+                            const error = liveErrors[stop.name];
+                            return (
+                                <div key={stop.name} className="relative flex items-end gap-4">
+                                    {stop.rail && (
+                                        <span
+                                            aria-hidden
+                                            className={`pointer-events-none absolute left-[7px] top-[calc(100%_-_21.5px)] h-[calc(100%_+_1rem)] w-px bg-gradient-to-b ${stop.rail}`}
                                         />
-                                    </Field>
+                                    )}
+                                    <span className="relative mb-3.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center">
+                                        <span className={`h-[7px] w-[7px] rounded-full ${error ? 'bg-flare shadow-[0_0_12px_rgba(251,92,119,0.7)]' : stop.dot}`} />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <Field icon={stop.icon} label={stop.label} error={error}>
+                                            <input
+                                                type="text"
+                                                name={stop.name}
+                                                className={`field pl-10 ${error ? 'border-flare/60 focus:border-flare focus:ring-flare/20' : ''}`}
+                                                placeholder={stop.placeholder}
+                                                value={data[stop.name]}
+                                                onChange={handleChange}
+                                                aria-invalid={Boolean(error)}
+                                                required
+                                            />
+                                        </Field>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </motion.fieldset>
 

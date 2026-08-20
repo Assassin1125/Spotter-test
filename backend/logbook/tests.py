@@ -149,3 +149,28 @@ class CalculateTripApiTests(SimpleTestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn('between 0 and 70', response.json()['error'])
+
+    @patch('logbook.views.geocode')
+    def test_reports_which_field_could_not_be_geocoded(self, geocode):
+        geocode.side_effect = [
+            ((-96.8, 32.8), 'Dallas, TX'),
+            (None, None),
+            ((-87.6, 41.8), 'Chicago, IL'),
+        ]
+
+        response = self.client.post(
+            reverse('calculate_trip'),
+            {
+                'start_location': 'Dallas, TX',
+                'pickup_location': 'Memfis, TNN',
+                'dropoff_location': 'Chicago, IL',
+                'current_cycle_used': 12,
+            },
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn('field_errors', payload)
+        self.assertEqual(set(payload['field_errors'].keys()), {'pickup_location'})
+        self.assertIn('Memfis, TNN', payload['field_errors']['pickup_location'])
