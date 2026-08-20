@@ -199,6 +199,7 @@ export default function LogSheet({ date, events, driverInfo, dayIndex = 0 }) {
                     <MetaRow label="Co-driver" value={driverInfo.co_driver_id || '-'} />
                     <MetaRow label="Carrier" value={driverInfo.carrier_name || '-'} mono={false} />
                     <MetaRow label="Truck #" value={driverInfo.truck_number || '-'} />
+                    <MetaRow label="Load #" value={driverInfo.shipping_doc || '-'} />
                 </div>
                 <div>
                     <MetaRow label="From" value={driverInfo.start_location || '-'} mono={false} />
