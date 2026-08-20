@@ -98,6 +98,25 @@ class HosPlannerTests(SimpleTestCase):
             ).total_seconds()
             self.assertEqual(duration, HOUR)
 
+    def test_events_are_contiguous_with_no_gaps_or_overlaps(self):
+        planner = HosPlanner(cycle_used_hours=65)
+        trip, geometry = route(60, 3600)
+
+        planner.drive_leg(trip, geometry)
+
+        self.assertGreater(len(planner.events), 5)
+        restarts = [e for e in planner.events if '34-hr Restart' in e['remarks']]
+        resets = [e for e in planner.events if e['type'] == 'SB']
+        breaks = [e for e in planner.events if e['remarks'] == '30-min Break']
+        fuel = [e for e in planner.events if e['remarks'] == 'Fuel Stop']
+        self.assertTrue(restarts and resets and breaks and fuel)
+
+        for prev, nxt in zip(planner.events, planner.events[1:]):
+            self.assertEqual(
+                datetime.fromisoformat(prev['end']),
+                datetime.fromisoformat(nxt['start']),
+            )
+
 
 class CalculateTripApiTests(SimpleTestCase):
     @patch('logbook.views.draw_log_sheet', return_value='logs/test.png')
@@ -174,3 +193,35 @@ class CalculateTripApiTests(SimpleTestCase):
         self.assertIn('field_errors', payload)
         self.assertEqual(set(payload['field_errors'].keys()), {'pickup_location'})
         self.assertIn('Memfis, TNN', payload['field_errors']['pickup_location'])
+
+    def test_rejects_duplicate_locations_without_calling_geocode(self):
+        response = self.client.post(
+            reverse('calculate_trip'),
+            {
+                'start_location': 'Dallas, TX',
+                'pickup_location': 'dallas, tx',
+                'dropoff_location': 'Chicago, IL',
+                'current_cycle_used': 12,
+            },
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertEqual(set(payload['field_errors'].keys()), {'start_location', 'pickup_location'})
+
+    def test_rejects_when_pickup_matches_dropoff(self):
+        response = self.client.post(
+            reverse('calculate_trip'),
+            {
+                'start_location': 'Dallas, TX',
+                'pickup_location': 'Chicago, IL',
+                'dropoff_location': 'Chicago, IL',
+                'current_cycle_used': 12,
+            },
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertEqual(set(payload['field_errors'].keys()), {'pickup_location', 'dropoff_location'})

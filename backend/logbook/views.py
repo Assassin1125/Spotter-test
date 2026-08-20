@@ -52,10 +52,34 @@ class CalculateTripView(APIView):
         try:
             cycle_used = float(request.data.get('current_cycle_used', 0) or 0)
         except (TypeError, ValueError):
-            return Response({"error": "Current cycle used must be a number of hours."}, status=400)
+            return Response({
+                "error": "Current cycle used must be a number of hours.",
+                "field_errors": {"current_cycle_used": "Enter a number of hours."},
+            }, status=400)
 
         if cycle_used < 0 or cycle_used > 70:
-            return Response({"error": "Current cycle used must be between 0 and 70 hours."}, status=400)
+            return Response({
+                "error": "Current cycle used must be between 0 and 70 hours.",
+                "field_errors": {"current_cycle_used": "Cycle hours must be between 0 and 70."},
+            }, status=400)
+
+        duplicate_errors = {}
+        message = "This can't be the same as {other} - there would be no distance to travel for that leg."
+        if start_loc.lower() == pickup_loc.lower():
+            duplicate_errors.setdefault('start_location', message.format(other='the pickup location'))
+            duplicate_errors.setdefault('pickup_location', message.format(other='the current location'))
+        if pickup_loc.lower() == dropoff_loc.lower():
+            duplicate_errors.setdefault('pickup_location', message.format(other='the dropoff location'))
+            duplicate_errors.setdefault('dropoff_location', message.format(other='the pickup location'))
+        if start_loc.lower() == dropoff_loc.lower():
+            duplicate_errors.setdefault('start_location', message.format(other='the dropoff location'))
+            duplicate_errors.setdefault('dropoff_location', message.format(other='the current location'))
+
+        if duplicate_errors:
+            return Response({
+                "error": "Current location, pickup, and dropoff must all be different.",
+                "field_errors": duplicate_errors,
+            }, status=400)
 
         start_coords, start_name = geocode(start_loc)
         pickup_coords, pickup_name = geocode(pickup_loc)

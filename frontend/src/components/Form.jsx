@@ -5,6 +5,7 @@ import {
     ArrowRight,
     Building2,
     CircleDot,
+    FileText,
     Flag,
     IdCard,
     Loader2,
@@ -50,6 +51,7 @@ const EMPTY_TRIP = {
     co_driver_id: '',
     truck_number: '',
     carrier_name: '',
+    shipping_doc: '',
 };
 
 const EXAMPLE_TRIP = {
@@ -61,6 +63,7 @@ const EXAMPLE_TRIP = {
     pickup_location: 'Memphis, TN',
     dropoff_location: 'Chicago, IL',
     current_cycle_used: 12.5,
+    shipping_doc: 'BOL-48213',
 };
 
 export default function Form({ onSubmit, loading, initialValues, fieldErrors }) {
@@ -201,6 +204,18 @@ export default function Form({ onSubmit, loading, initialValues, fieldErrors }) 
                                 onChange={handleChange}
                             />
                         </Field>
+                        <div className="sm:col-span-2">
+                            <Field icon={FileText} label="Shipping doc / load #">
+                                <input
+                                    type="text"
+                                    name="shipping_doc"
+                                    className="field pl-10"
+                                    placeholder="Optional - e.g. BOL-48213"
+                                    value={data.shipping_doc}
+                                    onChange={handleChange}
+                                />
+                            </Field>
+                        </div>
                     </div>
                 </motion.fieldset>
 
@@ -267,16 +282,18 @@ export default function Form({ onSubmit, loading, initialValues, fieldErrors }) 
                                     inputMode="decimal"
                                     min="0"
                                     max={CYCLE_LIMIT}
-                                    step="0.5"
+                                    step="0.1"
                                     value={data.current_cycle_used}
                                     onChange={handleChange}
                                     aria-label="Current cycle hours used"
-                                    className="w-20 rounded-lg border-0 bg-transparent px-1 py-0 text-right text-2xl font-semibold leading-none"
+                                    aria-invalid={Boolean(liveErrors.current_cycle_used)}
+                                    className={`w-20 rounded-lg border-0 bg-transparent px-1 py-0 text-right text-2xl font-semibold leading-none ${liveErrors.current_cycle_used ? 'text-flare-light' : ''
+                                        }`}
                                 />
                                 <span className="text-sm text-faint">/{CYCLE_LIMIT}</span>
                             </div>
-                            <div className={`mt-1.5 font-mono text-[11px] ${cycleTone}`}>
-                                {remaining.toFixed(1)}h remaining
+                            <div className={`mt-1.5 font-mono text-[11px] ${liveErrors.current_cycle_used ? 'text-flare-light' : cycleTone}`}>
+                                {liveErrors.current_cycle_used || `${remaining.toFixed(1)}h remaining`}
                             </div>
                         </div>
                     </div>
@@ -286,7 +303,7 @@ export default function Form({ onSubmit, loading, initialValues, fieldErrors }) 
                         name="current_cycle_used"
                         min="0"
                         max={CYCLE_LIMIT}
-                        step="0.5"
+                        step="0.1"
                         value={cycleUsed}
                         onChange={handleChange}
                         aria-label="Cycle hours used slider"
